@@ -35,6 +35,16 @@ mediquery/
 ![Query Results](./images/image-2.png)
 *Example of a medical query result with citations to NHS articles.*
 
+## Important Libraries
+
+- **LangChain**: Framework for developing applications powered by language models
+- **OpenAI**: GPT-4 for response generation
+- **Streamlit**: Web application framework for the user interface
+- **Chroma**: Vector database for storing and retrieving document embeddings
+- **HuggingFace Transformers**: For embedding model (sentence-transformers)
+- **BeautifulSoup & Selenium**: For web scraping NHS articles
+- **Pandas**: For data manipulation and management
+
 ## Requirements
 
 - Python 3.8+

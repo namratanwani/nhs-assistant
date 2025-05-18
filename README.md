@@ -1,6 +1,6 @@
 # MediQuery - NHS Medical Assistant
 
-MediQuery is a RAG system that provides medical information based on NHS articles. It uses natural language processing to retrieve relevant information from a database of NHS articles and generate accurate answers to medical queries.
+MediQuery is a RAG system that provides medical information based on NHS articles. It uses natural language processing to retrieve relevant information from a database of scraped NHS articles and generate accurate answers to medical queries.
 
 ## Project Structure
 

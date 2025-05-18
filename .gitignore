@@ -1,0 +1,6 @@
+app/.env
+app/chroma_db
+app/code
+research/.env
+research/chroma_db
+research/code

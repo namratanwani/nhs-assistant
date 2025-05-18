@@ -35,6 +35,15 @@ mediquery/
 ![Query Results](./images/image-2.png)
 *Example of a medical query result with citations to NHS articles.*
 
+## NHS Categories Scraped
+
+The system scrapes articles from the following NHS categories:
+- **Conditions**: Medical conditions and diseases (e.g., diabetes, asthma)
+- **Symptoms**: Common symptoms and their potential causes
+- **Tests and Treatments**: Medical procedures, tests, and treatment options
+- **Medicines**: Information about medications, including usage and side effects
+
+
 ## Important Libraries
 
 - **LangChain**: Framework for developing applications powered by language models
@@ -121,6 +130,6 @@ If you want to refresh the NHS article data:
 
 ## Acknowledgements
 
-This project uses data from NHS UK's official content. It is designed for educational purposes only and should not replace professional medical advice.
+This project uses public data from NHS UK's official content. It is designed for educational purposes only and should not replace professional medical advice.
 
 

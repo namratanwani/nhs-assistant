@@ -27,6 +27,14 @@ mediquery/
 - 📝 Detailed answers with citations
 - 🇬🇧 British medical terminology
 
+## Screenshots
+
+![MediQuery Interface](./images/image-1.png)
+*The MediQuery user interface showing the search functionality and NHS knowledge base.*
+
+![Query Results](./images/image-2.png)
+*Example of a medical query result with citations to NHS articles.*
+
 ## Requirements
 
 - Python 3.8+

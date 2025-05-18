@@ -128,6 +128,13 @@ If you want to refresh the NHS article data:
    - Generates a comprehensive answer using LLM (GPT-4)
    - Provides proper citations to NHS sources
 
+## Future Work
+
+- Add chat history persistence to maintain context across user sessions
+- Implement periodic scraping of NHS website to keep information up-to-date
+- Expand coverage to include additional NHS categories such as lifestyle, mental health, and preventive care
+- Add multi-language support to make medical information more accessible
+
 ## Acknowledgements
 
 This project uses public data from NHS UK's official content. It is designed for educational purposes only and should not replace professional medical advice.

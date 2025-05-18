@@ -8,13 +8,13 @@ MediQuery is a RAG system that provides medical information based on NHS article
 mediquery/
 ├── app/
 │   ├── app_rag.py        # Main Streamlit application for MediQuery
-│   ├── nhs_articles.csv  # Processed NHS articles data used by the app
+│   ├── nhs_articles.csv  # Scraped NHS articles data used by the app incase no vector db is present
 │   └── chroma_db/        # Vector database (generated on first run)
 │
 └── research/
     ├── data/
     │   ├── nhs_articles_links.csv  # Links to NHS articles
-    │   └── nhs_articles.csv        # Processed NHS articles data
+    │   └── nhs_articles.csv        # Scraped NHS articles data
     ├── rag.py                      # Core RAG implementation
     ├── read_nhs.py                 # Script to scrape NHS article links
     └── read_nhs_articles.py        # Script to extract article content

@@ -32,7 +32,7 @@ nhs-assistant/
 ## Screenshots
 
 ![MediQuery Interface](./images/image1.png)
-*The system user interface showing the search functionality and NHS knowledge base.*
+*The system user interface showing the chat UI*
 
 ![Query Results](./images/image2.png)
 *Example of a medical query result with citations to NHS articles.*

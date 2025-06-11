@@ -10,9 +10,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.document import Document
 import warnings
-import time
-import re
-import random
+from datetime import datetime
 
 # Set environment variable to disable tokenizers parallelism
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -31,142 +29,69 @@ EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Page configuration
 st.set_page_config(
-    page_title="MediQuery - NHS Medical Assistant",
+    page_title="Chat with NHS - Medical Assistant",
     page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Custom CSS to style the app - updated system ready box to gray with dark text
-st.markdown("""
-<style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .css-1lcbmhc, .css-1vs3yvj {
-        background-color: #f1f7fe !important;
-    }
-    .st-emotion-cache-1y4p8pa {
-        max-width: 1200px;
-    }
-    .info-box {
-        background-color: #555555;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border-left: 5px solid #333333;
-        color: #ffffff;
-    }
-    .info-box h3 {
-        color: #ffffff;
-    }
-    .results-area {
-        background-color: white;
-        border-radius: 10px;
-        padding: 20px;
-        margin-top: 20px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .source-box {
-        background-color: #f7f7f7;
-        border-radius: 5px;
-        padding: 10px;
-        margin-top: 10px;
-        font-size: 0.9em;
-        border-left: 3px solid #aaaaaa;
-    }
-    .citation {
-        color: #0066cc;
-        font-style: italic;
-        font-size: 0.9em;
-    }
-    .bullet-point {
-        margin-bottom: 15px;
-    }
-    h1 {
-        color: #2c3e50;
-    }
-    h2 {
-        color: #34495e;
-        margin-top: 2rem;
-    }
-    .stButton button {
-        background-color: #2e86de;
-        color: white;
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
-        font-weight: bold;
-    }
-    .stTextInput input {
-        border-radius: 5px;
-        border: 1px solid #e0e0e0;
-    }
-    .loading-spinner {
-        text-align: center;
-        padding: 20px;
-    }
-    .footer {
-        text-align: center;
-        margin-top: 40px;
-        color: #7f8c8d;
-        font-size: 0.8em;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialize session state
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = []
-if 'processing' not in st.session_state:
-    st.session_state.processing = False
+# Initialize session state for chat
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 if 'vector_store_ready' not in st.session_state:
     st.session_state.vector_store_ready = False
 if 'article_count' not in st.session_state:
     st.session_state.article_count = 0
+if 'num_docs' not in st.session_state:
+    st.session_state.num_docs = 5
+if 'show_rephrased' not in st.session_state:
+    st.session_state.show_rephrased = False
 
 # Sidebar
 with st.sidebar:
-    # st.image("https://www.nhs.uk/nhsuk-cms-theme/themes/nhsuk/assets/NHS-404-page.png", width=200)
-    st.title("🏥")
-    st.title("MediQuery")
-    st.markdown("### Your AI NHS Medical Assistant")
+    st.title("🏥 NHS Chat Assistant")
+    
+    st.markdown("---")
+    st.markdown("### Settings")
+    
+    # Document retrieval control
+    num_docs = st.slider(
+        "Documents to retrieve:",
+        min_value=2,
+        max_value=15,
+        value=st.session_state.num_docs,
+        help="More documents = more context but slower"
+    )
+    st.session_state.num_docs = num_docs
+    
+    # Show rephrased query option
+    show_rephrased = st.checkbox(
+        "Show rephrased queries",
+        value=st.session_state.show_rephrased,
+        help="See how queries are optimized"
+    )
+    st.session_state.show_rephrased = show_rephrased
+    
+    # Clear chat button
+    if st.button("🗑️ Clear Chat", type="secondary"):
+        st.session_state.messages = []
+        st.rerun()
+    
+    # Chat stats
+    if st.session_state.messages:
+        st.markdown(f"**Messages:** {len(st.session_state.messages)}")
     
     st.markdown("---")
     st.markdown("### About")
-    st.markdown("""
-    MediQuery uses advanced AI to answer your medical questions based on NHS articles. 
-    
-    All information is sourced directly from NHS UK's official content, ensuring accuracy and reliability.
-    """)
-    
-    st.markdown("---")
-    st.markdown("### Features")
-    st.markdown("""
-    - 🔍 Instant medical information lookup
-    - 📚 Based on official NHS articles
-    - 📝 Detailed answers with citations
-    - 🇬🇧 British medical terminology
-    """)
-    
-    st.markdown("---")
-    st.caption("This is a demonstration and not an official NHS product. Always consult healthcare professionals for medical advice.")
+    st.markdown("Get medical information from official NHS articles with AI-powered search and contextual understanding.")
 
-# Main content area
-st.title("🏥 MediQuery - Ask NHS")
-st.markdown("Ask any medical question and get information from NHS articles with proper citations.")
+# Main title
+st.title("💬 Chat with NHS")
 
 # Initialize RAG system
 @st.cache_resource
 def initialize_rag_system():
     # Get OpenAI API key
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    if not openai_api_key:
-        openai_api_key = os.getenv("OPENAI_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY")
         
     if not openai_api_key:
         st.error("OpenAI API key not found. Please set OPENAI_API_KEY or OPENAI_KEY environment variable.")
@@ -174,7 +99,7 @@ def initialize_rag_system():
     
     # Initialize LLM
     llm = ChatOpenAI(
-        model="gpt-4.1", 
+        model="gpt-4o-mini", 
         temperature=0,
         openai_api_key=openai_api_key
     )
@@ -189,7 +114,6 @@ def initialize_rag_system():
     if os.path.exists(INDEX_PATH) and os.path.isdir(INDEX_PATH) and len(os.listdir(INDEX_PATH)) > 0:
         try:
             vectorstore = Chroma(persist_directory=INDEX_PATH, embedding_function=embeddings)
-            # Get count of articles
             df = pd.read_csv("nhs_articles.csv")
             article_count = len(df)
             return vectorstore, llm, article_count
@@ -225,7 +149,7 @@ def initialize_rag_system():
                 )
                 documents.append(doc)
             
-            # Text splitter for 2000 character chunks
+            # Text splitter
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=CHUNK_SIZE,
                 chunk_overlap=CHUNK_OVERLAP,
@@ -242,206 +166,172 @@ def initialize_rag_system():
                 persist_directory=INDEX_PATH
             )
             
-            # Save the vector store
             vectorstore.persist()
-            
             return vectorstore, llm, article_count
         except Exception as e:
             st.error(f"Error building vector store: {e}")
             return None, None, 0
 
-# Initialize system with loading indicator
+# Query rephrasing function
+def rephrase_query_with_context(original_query, messages):
+    """Simple GPT-based query rephrasing"""
+    if not messages:
+        return original_query, False
+    
+    # Get recent context (last 2 exchanges)
+    recent_messages = messages[-4:] if len(messages) >= 4 else messages
+    context = ""
+    for i in range(0, len(recent_messages), 2):
+        if i+1 < len(recent_messages):
+            context += f"Q: {recent_messages[i]['content']}\nA: {recent_messages[i+1]['content'][:200]}...\n\n"
+    
+    prompt = f"""Given this conversation context:
+{context}
+
+Rephrase this query to be standalone and clear: "{original_query}"
+
+Only return the rephrased query, nothing else."""
+
+    try:
+        response = llm.invoke(prompt)
+        rephrased = response.content.strip().strip('"')
+        return rephrased, True
+    except:
+        return original_query, False
+
+# Initialize system
 with st.spinner("Initializing medical knowledge base..."):
     vectorstore, llm, article_count = initialize_rag_system()
     if vectorstore and llm:
-        retriever = vectorstore.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 5}
-        )
         st.session_state.vector_store_ready = True
         st.session_state.article_count = article_count
-
-# Display system status
-if st.session_state.vector_store_ready:
-    st.markdown(f"""
-    <div class="info-box">
-        <h3>📚 System Ready</h3>
-        <p>Knowledge base loaded with {st.session_state.article_count} NHS articles.</p>
-        <p>You can ask any medical question to get information with proper citations.</p>
-    </div>
-    """, unsafe_allow_html=True)
-else:
-    st.error("System initialization failed. Please check your setup and API keys.")
+        st.success(f"✅ Ready! Loaded {article_count} NHS articles")
 
 # RAG Query Function
 def process_medical_query(query):
     if not st.session_state.vector_store_ready:
-        return "System is not initialized properly. Please check your setup."
+        return "System not ready. Please check setup.", None, False
     
     try:
-        # Define the prompt template
-        template = """
-        You are a British medical research assistant. Your task is to answer only health-related questions based only on the context provided.
-        You will be given a query and a context that contains information from NHS UK articles.
-        Your response should be based on the context and should not include any information outside of it.
-        You should always provide citations for the articles you refer to in your answer.
-
-        Output Style:
-        1. Answer the question by explaining the relevant context in bullet points.
-        2. I fthe query is not related to health, let the user know.
-        3. If the context does not contain enough information to answer the question, let the user know.
-        4. If the context contains information that is not relevant to the question, let the user know.
-        5. Strictly mention only the article title and link of the article as they are, as inline citation you are referring to from the context.
-        6. If context is not relevant to the question, strictly let the user know.
-        7. Do not change the article title and link in any way.
+        # Rephrase query if needed
+        rephrased_query, was_rephrased = rephrase_query_with_context(query, st.session_state.messages)
         
-        Output format:
-            1. Explain the relevant context in a conversational manner. This is the explanation of the context. (article title, link)
-            2. You use only the relevant information from the context to answer the question. (article title, link)
-
-        
-        Context:
-        {context}
-
-        Question: {question}
-        """
-
-        prompt = ChatPromptTemplate.from_template(template)
-        
-        # Format docs function
-        def format_docs(docs):
-            context = ""
-            for i, doc in enumerate(docs, 1):
-                metadata = doc.metadata
-                title = metadata.get("title", "Unknown")
-                link = metadata.get("link", "Unknown")
-                
-                context += f"\nRelevant Article {i}:\nTitle: {title}\nLink: {link}\n{doc.page_content}\n\n"
-            print(f"Formatted context: {context}")
-            return context
-        
-        # Create and invoke RAG chain
-        rag_chain = (
-            {"context": retriever | format_docs, "question": RunnablePassthrough()}
-            | prompt
-            | llm
+        # Update retriever
+        retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": st.session_state.num_docs}
         )
         
-        # Show typing effect
-        response_placeholder = st.empty()
-        with response_placeholder.container():
-            message_placeholder = st.empty()
-            full_response = ""
-            
-            # Simulate typing effect
-            message_placeholder.markdown("Searching medical knowledge base...")
-            time.sleep(1.5)
-            
-            # Get actual response
-            response = rag_chain.invoke(query)
-            full_response = response.content
-            
-            # Process response to highlight citations
-            processed_response = re.sub(r'\((.*?), (https?://.*?)\)', r'<span class="citation">(\1, <a href="\2" target="_blank">source</a>)</span>', full_response)
-            
-            # Replace bullet points with styled divs
-            bullet_pattern = r'• (.*?)(?=• |$)'
-            if '• ' in processed_response:
-                processed_response = re.sub(bullet_pattern, r'<div class="bullet-point">• \1</div>', processed_response, flags=re.DOTALL)
-            
-            # Display final response
-            message_placeholder.markdown(processed_response, unsafe_allow_html=True)
+        # Get relevant documents using rephrased query
+        relevant_docs = retriever.invoke(rephrased_query)
         
-        return full_response
+        # Create context
+        context = ""
+        for i, doc in enumerate(relevant_docs, 1):
+            metadata = doc.metadata
+            title = metadata.get("title", "Unknown")
+            link = metadata.get("link", "Unknown")
+            context += f"\nArticle {i}:\nTitle: {title}\nLink: {link}\n{doc.page_content}\n\n"
+        
+        # Define prompt
+        template = """You are a British medical assistant. Answer the health question using only the NHS articles provided.
+
+Guidelines:
+- Answer in a conversational, helpful manner
+- Strictly include inline citations: (Article Title, Link)
+- If the question isn't overall health-related/ biomedical, politely redirect
+- If insufficient information, say so clearly
+- Use bullet points for symptoms, treatments, etc.
+- Strictly use the provided context only. If no relevant information, say so.
+- If context is not enough, say so.
+
+
+Context from NHS articles:
+{context}
+
+Question: {question}
+
+Answer:"""
+
+        prompt = ChatPromptTemplate.from_template(template)
+        response = (prompt | llm).invoke({"context": context, "question": query})
+        
+        rephrased_info = f"🔄 **Rephrased for search:** {rephrased_query}" if was_rephrased and st.session_state.show_rephrased else None
+        
+        return response.content, rephrased_info, True
+        
     except Exception as e:
-        return f"Error: {e}\nPlease try again or check your setup."
+        return f"Error: {e}", None, False
 
-# Example questions
-example_questions = [
-    "What is PCOS and how does it affect fertility?",
-    "What are the symptoms of diabetes?",
-    "How can I manage my anxiety?",
-    "What vaccinations are recommended for children?",
-    "What treatments are available for migraines?",
-    "What are the early signs of a stroke?"
-]
+# Display chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        # Show rephrased query if it exists
+        if "rephrased_info" in message and message["rephrased_info"]:
+            st.info(message["rephrased_info"])
 
-# User Interface for Questions
-st.markdown("### Ask a Medical Question")
-st.markdown("Type your question or select one of the examples below.")
-
-# Example question buttons
-col1, col2 = st.columns(2)
-with col1:
-    if st.button(example_questions[0]):
-        st.session_state.user_question = example_questions[0]
-    if st.button(example_questions[2]):
-        st.session_state.user_question = example_questions[2]
-    if st.button(example_questions[4]):
-        st.session_state.user_question = example_questions[4]
-
-with col2:
-    if st.button(example_questions[1]):
-        st.session_state.user_question = example_questions[1]
-    if st.button(example_questions[3]):
-        st.session_state.user_question = example_questions[3]
-    if st.button(example_questions[5]):
-        st.session_state.user_question = example_questions[5]
-
-# User input field
-user_question = st.text_input("Your question:", value=st.session_state.get('user_question', ''))
-
-# Search button
-if st.button("Search NHS Knowledge Base", type="primary") and user_question:
-    st.session_state.processing = True
-    with st.spinner("Searching medical knowledge base..."):
-        answer = process_medical_query(user_question)
-        st.session_state.chat_history.append({"question": user_question, "answer": answer})
-        st.session_state.processing = False
+# Example questions (only show when no chat history)
+# if not st.session_state.messages:
+#     st.markdown("### 💡 Try asking:")
+#     example_questions = [
+#         "What are the symptoms of diabetes?",
+#         "How can I manage anxiety?",
+#         "What treatments are available for migraines?"
+#     ]
     
-    # Clear the input after submission
-    st.session_state.user_question = ""
+#     cols = st.columns(len(example_questions))
+#     for i, question in enumerate(example_questions):
+#         with cols[i]:
+#             if st.button(question, key=f"example_{i}"):
+#                 # Add user message
+#                 st.session_state.messages.append({"role": "user", "content": question})
+                
+#                 # Get response
+#                 with st.chat_message("user"):
+#                     st.markdown(question)
+                
+#                 with st.chat_message("assistant"):
+#                     with st.spinner("Searching NHS knowledge base..."):
+#                         response, rephrased_info, success = process_medical_query(question)
+                    
+#                     st.markdown(response)
+#                     if rephrased_info:
+#                         st.info(rephrased_info)
+                
+#                 # Add assistant response
+#                 st.session_state.messages.append({
+#                     "role": "assistant", 
+#                     "content": response,
+#                     "rephrased_info": rephrased_info
+#                 })
+#                 st.rerun()
 
-# Display chat history
-if st.session_state.chat_history:
-    st.markdown("### Previous Questions")
+# Chat input
+if prompt := st.chat_input("Ask your medical question..."):
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
     
-    for i, exchange in enumerate(st.session_state.chat_history):
-        with st.expander(f"Q: {exchange['question']}", expanded=(i == len(st.session_state.chat_history) - 1)):
-            # Process response to highlight citations
-            processed_response = re.sub(r'\((.*?), (https?://.*?)\)', r'<span class="citation">(\1, <a href="\2" target="_blank">source</a>)</span>', exchange['answer'])
-            
-            # Replace bullet points with styled divs
-            bullet_pattern = r'• (.*?)(?=• |$)'
-            if '• ' in processed_response:
-                processed_response = re.sub(bullet_pattern, r'<div class="bullet-point">• \1</div>', processed_response, flags=re.DOTALL)
-            
-            st.markdown(processed_response, unsafe_allow_html=True)
-
-# Help section
-with st.expander("ℹ️ How to use MediQuery"):
-    st.markdown("""
-    ### How to Use MediQuery
-
-    1. **Ask a Question**: Type your medical question in the text field or select one of the example questions.
-    2. **Get Answers**: Click "Search NHS Knowledge Base" to get an answer based on NHS articles.
-    3. **View Citations**: Each piece of information is cited with the original NHS article for reference.
-    4. **Previous Questions**: Access your previous questions and answers in the expandable sections below.
-
-    ### Tips for Good Questions
-
-    - Be specific about symptoms, conditions, or treatments you're asking about
-    - Include relevant details like age group or risk factors if applicable
-    - Ask one question at a time for the most accurate answers
+    # Display user message
+    with st.chat_message("user"):
+        st.markdown(prompt)
     
-    Remember that MediQuery is for informational purposes only and does not replace professional medical advice.
-    """)
+    # Generate and display assistant response
+    with st.chat_message("assistant"):
+        with st.spinner("Searching NHS knowledge base..."):
+            response, rephrased_info, success = process_medical_query(prompt)
+        
+        st.markdown(response)
+        if rephrased_info:
+            st.info(rephrased_info)
+    
+    # Add assistant response to chat history
+    st.session_state.messages.append({
+        "role": "assistant", 
+        "content": response,
+        "rephrased_info": rephrased_info
+    })
 
 # Footer
-st.markdown("""
-<div class="footer">
-    <p>MediQuery RAG System - Powered by LangChain and OpenAI</p>
-    <p>Built with NHS data for educational purposes only.</p>
-    <p>Always consult healthcare professionals for medical advice.</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("---")
+st.caption("⚠️ This is for informational purposes only. Always consult healthcare professionals for medical advice.")

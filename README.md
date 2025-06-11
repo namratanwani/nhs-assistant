@@ -1,13 +1,13 @@
-# MediQuery - NHS Medical Assistant
+# NHS Medical Assistant
 
-MediQuery is a RAG system that provides medical information based on NHS articles. It uses natural language processing to retrieve relevant information from a database of scraped NHS articles and generate accurate answers to medical queries.
+This chat system provides medical information based on NHS articles. It uses natural language processing to retrieve relevant information from a database of scraped NHS articles and generate accurate answers to medical queries. The system includes intelligent query rephrasing to understand conversational context and references like "it", "that", or "those" from previous messages.
 
 ## Project Structure
 
 ```
-mediquery/
+nhs-assistant/
 ├── app/
-│   ├── app_rag.py        # Main Streamlit application for MediQuery
+│   ├── app_rag.py        # Main Streamlit application 
 │   ├── nhs_articles.csv  # Scraped NHS articles data used by the app incase no vector db is present
 │   └── chroma_db/        # Vector database (generated on first run)
 │
@@ -25,14 +25,16 @@ mediquery/
 - 🔍 Instant medical information lookup
 - 📚 Based on official NHS articles
 - 📝 Detailed answers with citations
+- 💬 Native Streamlit chat interface
+- 🔄 Smart query rephrasing for better context understanding
 - 🇬🇧 British medical terminology
 
 ## Screenshots
 
-![MediQuery Interface](./images/image-1.png)
-*The MediQuery user interface showing the search functionality and NHS knowledge base.*
+![MediQuery Interface](./images/image1.png)
+*The system user interface showing the search functionality and NHS knowledge base.*
 
-![Query Results](./images/image-2.png)
+![Query Results](./images/image2.png)
 *Example of a medical query result with citations to NHS articles.*
 
 ## NHS Categories Scraped
@@ -43,12 +45,11 @@ The system scrapes articles from the following NHS categories:
 - **Tests and Treatments**: Medical procedures, tests, and treatment options
 - **Medicines**: Information about medications, including usage and side effects
 
-
 ## Important Libraries
 
 - **LangChain**: Framework for developing applications powered by language models
-- **OpenAI**: GPT-4 for response generation
-- **Streamlit**: Web application framework for the user interface
+- **OpenAI**: GPT-4o-mini for response generation and query rephrasing
+- **Streamlit**: Web application framework with native chat interface
 - **Chroma**: Vector database for storing and retrieving document embeddings
 - **HuggingFace Transformers**: For embedding model (sentence-transformers)
 - **BeautifulSoup & Selenium**: For web scraping NHS articles
@@ -65,8 +66,8 @@ The system scrapes articles from the following NHS categories:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/mediquery.git
-   cd mediquery
+   https://github.com/namratanwani/nhs-assistant.git
+   cd nhs-assistant
    ```
 
 2. Install the required packages:
@@ -83,7 +84,7 @@ The system scrapes articles from the following NHS categories:
 
 ### Running the Web Application
 
-The Streamlit application provides a user-friendly interface for interacting with the RAG system:
+The Streamlit application provides a user-friendly chat interface for interacting with the RAG system:
 
 ```bash
 cd app
@@ -124,13 +125,20 @@ If you want to refresh the NHS article data:
 1. **Data Collection**: NHS articles are scraped and processed into a structured format.
 2. **Vector Database**: Article content is split into chunks, embedded, and stored in a Chroma vector database.
 3. **Query Processing**: When a user asks a question, the system:
+   - Rephrases queries with context from chat history for better retrieval
    - Finds relevant NHS article chunks using semantic search
-   - Generates a comprehensive answer using LLM (GPT-4)
+   - Generates a comprehensive answer using LLM (GPT-4o-mini)
    - Provides proper citations to NHS sources
+
+## Chat Features
+
+- **Contextual Understanding**: Ask follow-up questions using "it", "that", "those" - the system maintains conversation context
+- **Query Optimization**: Questions are automatically rephrased for better medical information retrieval
+- **Native Chat UI**: Clean, familiar chat interface with instant message display
+- **Adjustable Retrieval**: Configure number of documents retrieved (2-15) for different query complexities
 
 ## Future Work
 
-- Add chat history persistence to maintain context across user sessions
 - Implement periodic scraping of NHS website to keep information up-to-date
 - Expand coverage to include additional NHS categories such as lifestyle, mental health, and preventive care
 - Add multi-language support to make medical information more accessible
@@ -138,5 +146,3 @@ If you want to refresh the NHS article data:
 ## Acknowledgements
 
 This project uses public data from NHS UK's official content. It is designed for educational purposes only and should not replace professional medical advice.
-
-
